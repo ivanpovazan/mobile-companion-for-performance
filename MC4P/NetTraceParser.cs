@@ -4,6 +4,14 @@ using Microsoft.Diagnostics.Tracing.Parsers.Clr;
 
 public class NetTraceParser
 {
+    // Adding SortMode enumeration to define different sorting methods
+    public enum SortMode
+    {
+        SortBySize,
+        SortByJitTime,
+        SortByTimeToReach
+    }
+
     class AssemblyLoadInfo
     {
         public int EventID { get; set; }
@@ -42,7 +50,7 @@ public class NetTraceParser
             JitEndTime - JitStartTime : -1;
     }
 
-    public static string Parse(string filePath, int topN)
+    public static string Parse(string filePath, int topN, SortMode sortMode = SortMode.SortBySize)
     {
         var output = new System.Text.StringBuilder();
         output.AppendLine($"Processing file: {filePath}");
@@ -172,19 +180,45 @@ public class NetTraceParser
         // Calculate total width for the separator line
         int totalWidth = methodNameColumnWidth + 15 + 20 + 15 + 15; // Added 15 for JIT time
 
-        // Sort methods by timestamp and display top N
-        output.AppendLine($"\nTop {topN} methods by compiled size:");
+        // Sort methods based on the provided sort mode
+        string sortDescription;
+        IEnumerable<MethodInfo> sortedMethods;
+        
+        switch (sortMode)
+        {
+            case SortMode.SortBySize:
+                sortDescription = "compiled size";
+                sortedMethods = methodInfoDictionary.Values
+                    .OrderByDescending(m => m.MethodSize);
+                break;
+            case SortMode.SortByJitTime:
+                sortDescription = "JIT compilation time";
+                sortedMethods = methodInfoDictionary.Values
+                    .OrderByDescending(m => m.JitDuration);
+                break;
+            case SortMode.SortByTimeToReach:
+                sortDescription = "time to reach";
+                sortedMethods = methodInfoDictionary.Values
+                    .OrderByDescending(m => m.TimeStampMs);
+                break;
+            default:
+                sortDescription = "compiled size";
+                sortedMethods = methodInfoDictionary.Values
+                    .OrderByDescending(m => m.MethodSize);
+                break;
+        }
+
+        // Select top N methods after sorting
+        var topMethods = sortedMethods.Take(topN).ToList();
+
+        // Display top N methods based on selected sorting
+        output.AppendLine($"\nTop {topN} methods by {sortDescription}:");
         output.AppendLine(new string('-', totalWidth));
 
         // Format the header with dynamic width, putting method name last
         output.AppendLine(string.Format("{0,-15} {1,-20} {2,-15} {3,-15} {4}", 
             "IL Size (bytes)", "Method Size (bytes)", "Timestamp (ms)", "JIT Time (ms)", "Method Name"));
         output.AppendLine(new string('-', totalWidth));
-
-        var topMethods = methodInfoDictionary.Values
-            .OrderByDescending(m => m.TimeStampMs)
-            .Take(topN)
-            .ToList();
 
         foreach (var method in topMethods)
         {

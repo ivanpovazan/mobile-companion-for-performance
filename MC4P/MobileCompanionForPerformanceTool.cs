@@ -5,7 +5,7 @@ using ModelContextProtocol;
 using ModelContextProtocol.Protocol.Types;
 
 // Prompts:
-// Record startup trace of a .NET 9 Android app on Android device using MobileCompanionForPerformanceTool
+// Record new startup trace of a .NET 9 Android app on Android device using MobileCompanionForPerformanceTool
 
 [McpServerToolType]
 public static class MobileCompanionForPerformanceTool
@@ -21,8 +21,9 @@ Here are the instructions you will follow:
 3. Build android project for tracing via MobileCompanionForPerformanceTool. If the tool succeeds continue to step 4.
 4. Run tracing on the android device via MobileCompanionForPerformanceTool. If the tool succeeds continue to step 5.
 5. Ask the user to specify the number of methods to list from the startup trace. If the user provides a valid input continue to step 6.
-6. List the methods from the startup trace using MobileCompanionForPerformanceTool. If the tool succeeds continue to step 7.
-7. Say to the user that the process is finished.
+6. Ask the user to specify the sort mode: SortBySize, SortByJitTime, or SortByTimeToReach. If the user provides a valid input continue to step 7.
+7. List the methods from the startup trace using MobileCompanionForPerformanceTool. If the tool succeeds continue to step 8.
+8. Say to the user that the process is finished.
 Always start from step 1.
 If any step fails, do not continue to the next step, instead, ask the user to try again from step 1.
 For each step say to the user what are you about to do, but do not specify the step number.
@@ -200,11 +201,19 @@ Always display the output of the tool to the user.
     }
 
     [McpServerTool, Description("List methods from the startup trace using MobileCompanionForPerformanceTool")]
-    public static List<ChatMessage> ListNMethods([Description("The last startup trace")]string startupTrace, [Description("The number of methods to list")]int numberOfMethods)
+    public static List<ChatMessage> ListNMethods([Description("The last startup trace")]string startupTrace, 
+        [Description("The number of methods to list")]int numberOfMethods,
+        [Description("Sort mode: SortBySize, SortByJitTime, or SortByTimeToReach")]string sortMode = "SortBySize")
     {
         try
         {
-            var result = NetTraceParser.Parse(startupTrace, numberOfMethods);
+            // Parse the sortMode string to the enum value
+            if (!Enum.TryParse<NetTraceParser.SortMode>(sortMode, out var sortModeEnum))
+            {
+                throw new ArgumentException($"Invalid sort mode: {sortMode}. Valid values are: SortBySize, SortByJitTime, SortByTimeToReach");
+            }
+            
+            var result = NetTraceParser.Parse(startupTrace, numberOfMethods, sortModeEnum);
             return new List<ChatMessage>
             {
                 new ChatMessage(ChatRole.Assistant, $"SUCCESS: Here is the output: {result}"),
