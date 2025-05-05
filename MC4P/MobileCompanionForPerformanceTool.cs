@@ -20,10 +20,13 @@ Here are the instructions you will follow:
 2. Clean android project for tracing via MobileCompanionForPerformanceTool. If the tool succeeds continue to step 3.
 3. Build android project for tracing via MobileCompanionForPerformanceTool. If the tool succeeds continue to step 4.
 4. Run tracing on the android device via MobileCompanionForPerformanceTool. If the tool succeeds continue to step 5.
-5. Ask the user to specify the number of methods to list from the startup trace. If the user provides a valid input continue to step 6.
-6. Ask the user to specify the sort mode: SortBySize, SortByJitTime, or SortByTimeToReach. If the user provides a valid input continue to step 7.
-7. List the methods from the startup trace using MobileCompanionForPerformanceTool. If the tool succeeds continue to step 8.
-8. Say to the user that the process is finished.
+5. Ask the user to specify if they want to display stats for a specific method or list N methods from the startup trace. If the user wants to display stats for a specific method continue to step 6. If the user wants to list N methods continue to step 8.
+6. Ask the user to specify the method name. If the user provides a valid input continue to step 7.
+7. Display the stats for the specified method from the startup trace using MobileCompanionForPerformanceTool. If the tool succeeds continue to step 11.
+8. Ask the user to specify the number of methods to list from the startup trace. If the user provides a valid input continue to step 6.
+9. Ask the user to specify the sort mode: SortBySize, SortByJitTime, or SortByTimeToReach. If the user provides a valid input continue to step 7.
+10. List the methods from the startup trace using MobileCompanionForPerformanceTool. If the tool succeeds continue to step 8.
+11. Say to the user that the process is finished.
 Always start from step 1.
 If any step fails, do not continue to the next step, instead, ask the user to try again from step 1.
 For each step say to the user what are you about to do, but do not specify the step number.
@@ -213,7 +216,28 @@ Always display the output of the tool to the user.
                 throw new ArgumentException($"Invalid sort mode: {sortMode}. Valid values are: SortBySize, SortByJitTime, SortByTimeToReach");
             }
             
-            var result = NetTraceParser.Parse(startupTrace, numberOfMethods, sortModeEnum);
+            var result = NetTraceParser.ListTopMethods(startupTrace, numberOfMethods, sortModeEnum);
+            return new List<ChatMessage>
+            {
+                new ChatMessage(ChatRole.Assistant, $"SUCCESS: Here is the output: {result}"),
+            };
+        }
+        catch (Exception ex)
+        {
+            return new List<ChatMessage>
+            {
+                new ChatMessage(ChatRole.Assistant, $"Error: {ex.Message}")
+            };
+        }
+    }
+
+    [McpServerTool, Description("Display stats for desired method from the startup trace using MobileCompanionForPerformanceTool")]
+    public static List<ChatMessage> DisplayMethodStats([Description("The last startup trace")]string startupTrace, 
+        [Description("Desired method name")]string method)
+    {
+        try
+        {
+            var result = NetTraceParser.DisplayMethodStats(startupTrace, method);
             return new List<ChatMessage>
             {
                 new ChatMessage(ChatRole.Assistant, $"SUCCESS: Here is the output: {result}"),

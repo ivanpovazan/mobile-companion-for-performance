@@ -1,6 +1,7 @@
 using Microsoft.Diagnostics.Tracing.Etlx;
 using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Clr;
+using System.Text;
 
 public class NetTraceParser
 {
@@ -12,7 +13,16 @@ public class NetTraceParser
         SortByTimeToReach
     }
 
-    class AssemblyLoadInfo
+    public class ParseResult
+    {
+        public Dictionary<long, AssemblyLoadInfo> AssemblyLoadInfos { get; set; }
+        public Dictionary<long, MethodInfo> MethodInfoDictionary { get; set; }
+        public int TotalEvents { get; set; }
+        public int AssemblyLoadEvents { get; set; }
+        public int MethodDetailsEvents { get; set; }
+    }
+
+    public class AssemblyLoadInfo
     {
         public int EventID { get; set; }
         public double TimeStampMs { get; set; }
@@ -25,7 +35,7 @@ public class NetTraceParser
         public string AssemblyName { get; set; }
     }
 
-    class MethodInfo
+    public class MethodInfo
     {
         public int EventID { get; set; }
         public double TimeStampMs { get; set; }
@@ -50,19 +60,15 @@ public class NetTraceParser
             JitEndTime - JitStartTime : -1;
     }
 
-    public static string Parse(string filePath, int topN, SortMode sortMode = SortMode.SortBySize)
+    public static ParseResult Parse(string filePath)
     {
-        var output = new System.Text.StringBuilder();
-        output.AppendLine($"Processing file: {filePath}");
         // Use a temporary ETLX file for processing
         string etlxFilePath = Path.ChangeExtension(filePath, ".etlx");
         
         // Convert the nettrace file to ETLX format if needed
         if (filePath.EndsWith(".nettrace", StringComparison.OrdinalIgnoreCase))
         {
-            output.AppendLine("Converting .nettrace to ETLX format...");
             TraceLog.CreateFromEventPipeDataFile(filePath, etlxFilePath);
-            output.AppendLine("Conversion complete.");
         }
         else
         {
@@ -159,14 +165,35 @@ public class NetTraceParser
             methodInfo.JitEndTime = data.TimeStampRelativeMSec;
         };
         
-        output.AppendLine("Scanning for Assembly Load and Method Details events...");
+        // Process all events in the trace
         source.Process();
-        output.AppendLine("Scan complete.");
+        
+        // Return the parsed data
+        return new ParseResult
+        {
+            AssemblyLoadInfos = assemblyLoadInfos,
+            MethodInfoDictionary = methodInfoDictionary,
+            TotalEvents = totalEvents,
+            AssemblyLoadEvents = assemblyLoadEvents,
+            MethodDetailsEvents = methodDetailsEvents
+        };
+    }
+
+    public static string ListTopMethods(string filePath, int topN, SortMode sortMode = SortMode.SortBySize)
+    {
+        var output = new StringBuilder();
+        output.AppendLine($"Processing file: {filePath}");
+        
+        // Parse the trace file first
+        var parseResult = Parse(filePath);
         
         // Print summary information
-        output.AppendLine($"Total events processed: {totalEvents}");
-        output.AppendLine($"Assembly Load events found: {assemblyLoadEvents}");
-        output.AppendLine($"Method Details events found: {methodDetailsEvents}");
+        output.AppendLine("Scan complete.");
+        output.AppendLine($"Total events processed: {parseResult.TotalEvents}");
+        output.AppendLine($"Assembly Load events found: {parseResult.AssemblyLoadEvents}");
+        output.AppendLine($"Method Details events found: {parseResult.MethodDetailsEvents}");
+        
+        var methodInfoDictionary = parseResult.MethodInfoDictionary;
         
         // Find the longest full method name (including signature)
         int maxMethodNameLength = methodInfoDictionary.Values
@@ -221,6 +248,65 @@ public class NetTraceParser
         output.AppendLine(new string('-', totalWidth));
 
         foreach (var method in topMethods)
+        {
+            string fullMethodName = $"{method.MethodNamespace}.{method.MethodName}.{method.MethodSignature}";
+            output.AppendLine(string.Format("{0,-15} {1,-20} {2,-15:F2} {3,-15:F2} {4}", 
+                method.ILSize, method.MethodSize, method.TimeStampMs, 
+                method.JitDuration >= 0 ? method.JitDuration : 0, fullMethodName));
+        }
+
+        return output.ToString();
+    }
+
+    public static string DisplayMethodStats(string filePath, string methodName)
+    {
+        var output = new StringBuilder();
+        output.AppendLine($"Processing file: {filePath}");
+        output.AppendLine($"Looking for method: {methodName}");
+        
+        // Parse the trace file first
+        var parseResult = Parse(filePath);
+        
+        // Print summary information
+        output.AppendLine("Scan complete.");
+        output.AppendLine($"Total events processed: {parseResult.TotalEvents}");
+        output.AppendLine($"Assembly Load events found: {parseResult.AssemblyLoadEvents}");
+        output.AppendLine($"Method Details events found: {parseResult.MethodDetailsEvents}");
+        
+        // Find all methods matching the provided method name
+        var matchingMethods = parseResult.MethodInfoDictionary.Values
+            .Where(m => (m.MethodName?.Contains(methodName, StringComparison.OrdinalIgnoreCase) ?? false) || 
+                        (m.MethodNamespace?.Contains(methodName, StringComparison.OrdinalIgnoreCase) ?? false) || 
+                        ($"{m.MethodNamespace}.{m.MethodName}".Contains(methodName, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        
+        if (matchingMethods.Count == 0)
+        {
+            output.AppendLine($"No methods found matching '{methodName}'.");
+            return output.ToString();
+        }
+        
+        // Find the longest full method name (including signature)
+        int maxMethodNameLength = matchingMethods
+            .Select(m => $"{m.MethodNamespace}.{m.MethodName}.{m.MethodSignature}".Length)
+            .DefaultIfEmpty(50) // Default to 50 if collection is empty
+            .Max();
+
+        // Add some padding and enforce minimum width
+        int methodNameColumnWidth = Math.Max(50, maxMethodNameLength + 2);
+
+        // Calculate total width for the separator line
+        int totalWidth = methodNameColumnWidth + 15 + 20 + 15 + 15; // Added 15 for JIT time
+        
+        output.AppendLine($"\nFound {matchingMethods.Count} methods matching '{methodName}':");
+        output.AppendLine(new string('-', totalWidth));
+
+        // Format the header with dynamic width, putting method name last
+        output.AppendLine(string.Format("{0,-15} {1,-20} {2,-15} {3,-15} {4}", 
+            "IL Size (bytes)", "Method Size (bytes)", "Timestamp (ms)", "JIT Time (ms)", "Method Name"));
+        output.AppendLine(new string('-', totalWidth));
+
+        foreach (var method in matchingMethods)
         {
             string fullMethodName = $"{method.MethodNamespace}.{method.MethodName}.{method.MethodSignature}";
             output.AppendLine(string.Format("{0,-15} {1,-20} {2,-15:F2} {3,-15:F2} {4}", 
