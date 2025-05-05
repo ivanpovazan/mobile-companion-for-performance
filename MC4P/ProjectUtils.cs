@@ -3,12 +3,12 @@ using System.Xml;
 
 public static class ProjectUtils
 {
-    public static string EnvFileName = "MobileCompanionForPerformanceToolAndroidEnv.txt";
+    public static string EnvFileName = "MC4P_AndroidEnv.txt";
     public static string DotnetDiagnosticPortsEnv = "DOTNET_DiagnosticPorts=127.0.0.1:9000,suspend,connect";
     public static string DirectoryBuildPropsFileName = "Directory.Build.props";
     public static string BuildConfiguration = "Release";
     public static string CommonDotnetBuildArguments = $"-c {BuildConfiguration} -p:AndroidEnableProfiler=true -p:RunAOTCompilation=false -tl:false";
-    public static string CommonDotnetTraceArguments = "--providers Microsoft-Windows-DotNETRuntime:0x1F000080018:5 --duration 00:00:00:15 --dsrouter android";
+    public static string CommonDotnetTraceArguments = "--providers Microsoft-Windows-DotNETRuntime:0x1F000080018:5 --duration 00:00:00:10 --dsrouter android";
 
     public static Process CreateProcess(string fileName, string arguments, string workingDirectory)
     {
@@ -33,8 +33,8 @@ public static class ProjectUtils
 
         var outputTask = process.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-
-        await Task.WhenAll(outputTask, errorTask);
+        var exitTask = process.WaitForExitAsync();
+        await Task.WhenAll(outputTask, errorTask, exitTask);
 
         return (outputTask.Result, errorTask.Result);
     }
