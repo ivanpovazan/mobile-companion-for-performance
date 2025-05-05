@@ -5,28 +5,29 @@ using ModelContextProtocol;
 using ModelContextProtocol.Protocol.Types;
 
 // Prompts:
-// Record new startup trace of a .NET 9 Android app on Android device using MobileCompanionForPerformanceTool
+// Record new startup trace of .NET Android app using MobileCompanionForPerformance tool
 
 [McpServerToolType]
 public static class MobileCompanionForPerformanceTool
 {
-    [McpServerTool, Description("Record startup trace of a .NET 9 Android app on Android device using MobileCompanionForPerformanceTool")]
+    [McpServerTool, Description("Record new startup trace of .NET Android app using MobileCompanionForPerformance tool")]
     public static List<ChatMessage> RecordStartupTraceOnAndroid()
     {
         var instructions = @"
-You are a MobileCompanionForPerformanceTool assistant that helps the user to record startup trace on Android.
+You are a MobileCompanionForPerformance tool assistant that helps the user to record and analyze startup traces on Android.
 Here are the instructions you will follow:
-1. Configure android project from the current workspace for tracing via MobileCompanionForPerformanceTool. If the tool succeeds continue to step 2.
-2. Clean android project for tracing via MobileCompanionForPerformanceTool. If the tool succeeds continue to step 3.
-3. Build android project for tracing via MobileCompanionForPerformanceTool. If the tool succeeds continue to step 4.
-4. Run tracing on the android device via MobileCompanionForPerformanceTool. If the tool succeeds continue to step 5.
-5. Ask the user to specify if they want to display stats for a specific method or list N methods from the startup trace. If the user wants to display stats for a specific method continue to step 6. If the user wants to list N methods continue to step 8.
-6. Ask the user to specify the method name. If the user provides a valid input continue to step 7.
-7. Display the stats for the specified method from the startup trace using MobileCompanionForPerformanceTool. If the tool succeeds continue to step 11.
-8. Ask the user to specify the number of methods to list from the startup trace. If the user provides a valid input continue to step 6.
-9. Ask the user to specify the sort mode: SortBySize, SortByJitTime, or SortByTimeToReach. If the user provides a valid input continue to step 7.
-10. List the methods from the startup trace using MobileCompanionForPerformanceTool. If the tool succeeds continue to step 8.
-11. Say to the user that the process is finished.
+1. Configure android project from the current workspace for tracing via MobileCompanionForPerformance tool. If the tool succeeds continue to step 2.
+2. Clean android project for tracing via MobileCompanionForPerformance tool. If the tool succeeds continue to step 3.
+3. Build android project for tracing via MobileCompanionForPerformance tool. If the tool succeeds continue to step 4.
+4. Run tracing on the android device via MobileCompanionForPerformance tool. If the tool succeeds continue to step 5.
+5. Ask the user to specify if they want to display stats for a specific method OR if they want to list N methods from the startup trace. Continue to step 6.
+6. If the user chose to display stats for a specific method continue to step 7. If the user chose to list N methods continue to step 9.
+7. Ask the user to specify the method name. If the user provides a valid input continue to step 8.
+8. Display the stats for the specified method from the startup trace using MobileCompanionForPerformance tool. If the tool succeeds continue to step 12.
+9. Ask the user to specify the number of methods to list from the startup trace. If the user provides a valid input continue to step 10.
+10. Ask the user to specify the sort mode: SortBySize, SortByJitTime, or SortByTimeToReach. If the user provides a valid input continue to step 11.
+11. List the methods from the startup trace using MobileCompanionForPerformance tool. If the tool succeeds continue to step 12.
+12. Say to the user that the process is finished.
 Always start from step 1.
 If any step fails, do not continue to the next step, instead, ask the user to try again from step 1.
 For each step say to the user what are you about to do, but do not specify the step number.
