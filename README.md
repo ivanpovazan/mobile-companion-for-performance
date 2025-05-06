@@ -11,7 +11,7 @@ This is an experimental [MCP server](https://modelcontextprotocol.io/docs/concep
 
 The main advantage of the tools is simplification of the above tasks and providing more context about the application behavior to the AI agent and help with reasoning.
 
-## Using the MCP tool
+## How to use it?
 
 ### Prerequisites
 
@@ -48,7 +48,7 @@ The main advantage of the tools is simplification of the above tasks and providi
 
 - The tool icon should display the number of available tools (7)
 
-### Using the tool
+### Using the tools
 
 - Open an android project and use the following prompt to run the exposed methods:
 
