@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This is an experimental [MCP server tool](https://modelcontextprotocol.io/docs/concepts/tools) which enables users to use natural language with MCP-enabled chatbots to:
+This is an experimental [MCP server](https://modelcontextprotocol.io/docs/concepts/tools) which enables users to use natural language with MCP-enabled chatbots to:
 
 1. Record startup traces of their .NET Android apps.
 2. Analyze the traces and get relevant method information from them (similar to PerfView).
